@@ -1,0 +1,65 @@
+name: .NET 9 Windows AGI Mesh CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Windows-AGI-Mesh/**'
+      - 'global.json'
+      - '.github/workflows/dotnet-desktop.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Windows-AGI-Mesh/**'
+      - 'global.json'
+      - '.github/workflows/dotnet-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SOLUTION_FILE: Windows-AGI-Mesh/Windows-AGI-Mesh.sln
+
+jobs:
+  build:
+    name: Build and test (${{ matrix.configuration }})
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration:
+          - Debug
+          - Release
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Verify solution
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path $env:SOLUTION_FILE)) {
+            throw "Solution not found: $env:SOLUTION_FILE"
+          }
+          Write-Host "Using solution: $env:SOLUTION_FILE"
+
+      - name: Restore solution
+        shell: pwsh
+        run: dotnet restore $env:SOLUTION_FILE
+
+      - name: Build solution
+        shell: pwsh
+        run: dotnet build $env:SOLUTION_FILE --configuration ${{ matrix.configuration }} --no-restore --verbosity normal
+
+      - name: Test solution
+        shell: pwsh
+        run: dotnet test $env:SOLUTION_FILE --configuration ${{ matrix.configuration }} --no-build --verbosity normal
